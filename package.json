@@ -1,0 +1,16 @@
+{
+  "name": "bareaya-project",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bareaya - Full stack project with backend and website",
+  "scripts": {
+    "dev:full": "cd website && npm run dev:full",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd website && npm run dev",
+    "build": "cd website && npm run build",
+    "install:all": "npm install && cd backend && npm install && cd ../website && npm install"
+  },
+  "devDependencies": {
+    "vite": "^8.2.2"
+  }
+}

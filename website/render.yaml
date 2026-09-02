@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: bareaya-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm run server
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 3306
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+        
+      - key: DB_NAME
+        value: bareaya
+      - key: MAIL_USER
+        sync: false
+      - key: MAIL_APP_PASSWORD
+        sync: false
+      - key: NOTIFICATION_EMAIL
+        value: prabjitsinghmkcl@gmail.com
