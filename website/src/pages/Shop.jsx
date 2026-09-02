@@ -6,15 +6,15 @@ import { fetchProducts } from '../../utils/api'
 // It supports search, category filtering, sorting, and adding products to the bag.
 const products = [
   { name: 'BareAya Infrared & Blue Light Protection', size: '100 ml', price: 645, category: 'Protection', label: 'New protection ritual', image: '/infrared-blue-light-protection.jpeg', description: 'A fine mist made for the digital world, designed to help protect skin from infrared and blue light exposure.' },
-  { name: 'Midnight Removing Balm', size: '50 gm', price: 1150, category: 'Clarity', label: 'Night ritual', image: '/dist/Screenshot%202026-08-23%20135609.png', description: 'A gentle cleansing balm that melts away makeup, sunscreen and impurities.' },
-  { name: 'Under Eye Balm', size: '15 ml', price: 600, category: 'Hydration', label: 'Care for eyes', image: '/dist/Screenshot%202026-08-23%20135843.png', description: 'Keeps the under-eye area hydrated and refreshed.' },
-  { name: 'Lip Balm Beetroot', size: '8 gm jar', price: 300, category: 'Hydration', label: 'A soft tint', image: '/dist/Screenshot%202026-08-23%20140042.png', description: 'A nourishing beetroot tint for naturally soft, rosy lips.' },
-  { name: 'Lip Balm Kesar', size: '8 gm jar', price: 300, category: 'Hydration', label: 'A natural glow', image: '/dist/Screenshot%202026-08-23%20140213.png', description: 'Kesar enriched care that nourishes and hydrates your lips.' },
-  { name: 'Night Balm', size: '50 gm', price: 999, category: 'Hydration', label: 'While you sleep', image: '/dist/Screenshot%202026-08-23%20141130.png', description: 'A nourishing balm for a soft, comfortable night-time ritual.' },
-  { name: 'Dry Face Wash', size: '50 gm', price: 850, category: 'Clarity', label: 'Gentle cleanse', image: '/dist/Screenshot%202026-08-23%20141329.png', description: 'A botanical powder cleanser for a gentle, balanced cleanse.' },
-  { name: 'BareAya Hydra Blast', size: '50 gm', price: 799, category: 'Hydration', label: 'Deep hydration', image: '/dist/Screenshot%202026-08-23%20141522.png', description: 'Shea butter, aloe and botanical oils for lasting moisture.' },
-  { name: 'Aloe Activator', size: '38 ml', price: 300, category: 'Hydration', label: 'Everyday aloe', image: '/dist/Screenshot%202026-08-23%20141701.png', description: 'A lightweight aloe hydrator with rose water and vitamin E.' },
-  { name: 'Skin Tonic', size: '50 gm', price: 300, category: 'Protection', label: 'Botanical balance', image: '/dist/Screenshot%202026-08-23%20141829.png', description: 'A refreshing tonic that hydrates, balances and revitalizes.' },
+  { name: 'Midnight Removing Balm', size: '50 gm', price: 1150, category: 'Clarity', label: 'Night ritual', image: '/Screenshot%202026-08-23%20135609.png', description: 'A gentle cleansing balm that melts away makeup, sunscreen and impurities.' },
+  { name: 'Under Eye Balm', size: '15 ml', price: 600, category: 'Hydration', label: 'Care for eyes', image: '/Screenshot%202026-08-23%20135843.png', description: 'Keeps the under-eye area hydrated and refreshed.' },
+  { name: 'Lip Balm Beetroot', size: '8 gm jar', price: 300, category: 'Hydration', label: 'A soft tint', image: '/Screenshot%202026-08-23%20140042.png', description: 'A nourishing beetroot tint for naturally soft, rosy lips.' },
+  { name: 'Lip Balm Kesar', size: '8 gm jar', price: 300, category: 'Hydration', label: 'A natural glow', image: '/Screenshot%202026-08-23%20140213.png', description: 'Kesar enriched care that nourishes and hydrates your lips.' },
+  { name: 'Night Balm', size: '50 gm', price: 999, category: 'Hydration', label: 'While you sleep', image: '/Screenshot%202026-08-23%20141130.png', description: 'A nourishing balm for a soft, comfortable night-time ritual.' },
+  { name: 'Dry Face Wash', size: '50 gm', price: 850, category: 'Clarity', label: 'Gentle cleanse', image: '/Screenshot%202026-08-23%20141329.png', description: 'A botanical powder cleanser for a gentle, balanced cleanse.' },
+  { name: 'BareAya Hydra Blast', size: '50 gm', price: 799, category: 'Hydration', label: 'Deep hydration', image: '/Screenshot%202026-08-23%20141522.png', description: 'Shea butter, aloe and botanical oils for lasting moisture.' },
+  { name: 'Aloe Activator', size: '38 ml', price: 300, category: 'Hydration', label: 'Everyday aloe', image: '/Screenshot%202026-08-23%20141701.png', description: 'A lightweight aloe hydrator with rose water and vitamin E.' },
+  { name: 'Skin Tonic', size: '50 gm', price: 300, category: 'Protection', label: 'Botanical balance', image: '/Screenshot%202026-08-23%20141829.png', description: 'A refreshing tonic that hydrates, balances and revitalizes.' },
 ]
 
 const categories = ['All products', 'Hydration', 'Clarity', 'Protection']
@@ -54,7 +54,7 @@ function Shop() {
   }
 
   const visibleProducts = (() => {
-    const filtered = products.filter((product) => {
+    const filtered = catalogProducts.filter((product) => {
       const matchesCategory = category === 'All products' || product.category === category
       const matchesQuery = product.name.toLowerCase().includes(query.toLowerCase())
       return matchesCategory && matchesQuery
