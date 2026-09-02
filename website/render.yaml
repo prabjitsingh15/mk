@@ -2,8 +2,11 @@ services:
   - type: web
     name: bareaya-api
     runtime: node
-    buildCommand: npm install
-    startCommand: npm run server
+    rootDir: ..
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: PORT
         value: 10000
@@ -15,7 +18,6 @@ services:
         sync: false
       - key: DB_PASSWORD
         sync: false
-        
       - key: DB_NAME
         value: bareaya
       - key: MAIL_USER
@@ -23,4 +25,4 @@ services:
       - key: MAIL_APP_PASSWORD
         sync: false
       - key: NOTIFICATION_EMAIL
-        value: prabjitsinghmkcl@gmail.com
+        sync: false
