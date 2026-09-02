@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer'
 // Email delivery is optional and only used when Gmail SMTP credentials are configured.
 // This allows the storefront to notify the admin when a customer places an order.
 const mailUser = globalThis.process?.env.MAIL_USER
-const mailPassword = globalThis.process?.env.MAIL_APP_PASSWORD?.otbwdczsssoemvgy.replace(/\s+/g, '')
+const mailPassword = globalThis.process?.env.MAIL_APP_PASSWORD?.replace(/\s+/g, '')
 const notificationEmail = globalThis.process?.env.NOTIFICATION_EMAIL
 
 if (!mailUser || !mailPassword || !notificationEmail) {
