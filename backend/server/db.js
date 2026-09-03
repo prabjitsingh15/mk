@@ -2,12 +2,15 @@ import 'dotenv/config'
 import pg from 'pg'
 
 const { Pool } = pg
+const databaseUrl = globalThis.process?.env.DATABASE_URL?.trim()
+
+if (!databaseUrl) throw new Error('DATABASE_URL is required. Set it in backend/.env or the Render service environment.')
 
 // Shared PostgreSQL connection pool for the BareAya backend.
 // The app uses this pool to read products, save orders, and create
 // the required tables when the server starts.
 export const pool = new Pool({
-  connectionString: globalThis.process?.env.DATABASE_URL,
+  connectionString: databaseUrl,
   ssl: globalThis.process?.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
 })
 
@@ -15,7 +18,7 @@ export const pool = new Pool({
  * Creates the required product, order, and order item tables if they do not exist.
  *
  * The function also seeds the product catalog from the in-memory product list.
- * ON DUPLICATE KEY UPDATE keeps the database entries aligned with the current catalog
+ * ON CONFLICT keeps the database entries aligned with the current catalog
  * without creating duplicate rows when the server is restarted.
  */
 export async function initializeDatabase(products) {

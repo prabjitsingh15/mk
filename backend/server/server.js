@@ -131,15 +131,14 @@ async function startServer() {
   }
 
   if (!dbConnected) {
-    console.warn('⚠ Could not connect to PostgreSQL database. Server will start, but database operations may fail.')
+    console.warn('⚠ Could not connect to PostgreSQL database. API startup aborted.')
     console.warn('⚠ Make sure DATABASE_URL is configured and the database is accessible.')
+    globalThis.process.exitCode = 1
+    return
   }
 
   app.listen(port, () => {
     console.log(`✓ BareAya API running at http://localhost:${port}`)
-    if (!dbConnected) {
-      console.warn('⚠ Database is not connected. Please verify DATABASE_URL is configured.')
-    }
   })
 }
 
