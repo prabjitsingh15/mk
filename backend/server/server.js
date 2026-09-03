@@ -7,7 +7,7 @@ import { createRateLimiter, readRateLimitConfig } from './rateLimit.js'
 
 // BareAya backend API.
 // This service exposes product and order endpoints, validates incoming order data,
-// stores the information in MySQL, and sends a notification email for each order.
+// stores the information in PostgreSQL, and sends a notification email for each order.
 const app = express()
 const port = globalThis.process?.env.PORT || 3001
 const rateLimits = readRateLimitConfig(globalThis.process?.env)
@@ -44,16 +44,16 @@ app.get('/', (_request, response) => response.json({ name: 'BareAya API', status
 app.get('/api/health', async (_request, response) => {
   try {
     await pool.query('SELECT 1')
-    return response.json({ status: 'ok', database: 'mysql' })
+    return response.json({ status: 'ok', database: 'postgresql' })
   } catch {
     return response.status(503).json({ status: 'error', database: 'unavailable' })
   }
 })
 
-// Returns the product catalog stored in MySQL for the Storefront UI.
+// Returns the product catalog stored in PostgreSQL for the Storefront UI.
 app.get('/api/products', async (_request, response) => {
-  const [rows] = await pool.query('SELECT id, name, price, size, category FROM products ORDER BY id')
-  return response.json(rows)
+  const { rows } = await pool.query('SELECT id, name, price, size, category FROM products ORDER BY id')
+  return response.json(rows.map((product) => ({ ...product, price: Number(product.price) })))
 })
 
 // Creates a new order after validating the customer details, delivery address, and cart items.
@@ -64,12 +64,12 @@ app.post('/api/orders', async (request, response) => {
   }
 
   if (items.some((item) => !Number.isInteger(item.quantity) || item.quantity < 1 || !item.name)) return response.status(400).json({ message: 'One or more cart items are invalid.' })
-  const connection = await pool.getConnection()
+  const connection = await pool.connect()
   try {
-    await connection.beginTransaction()
+    await connection.query('BEGIN')
     const names = items.map((item) => item.name)
-    const placeholders = names.map(() => '?').join(', ')
-    const [productsInOrder] = await connection.query(`SELECT id, name, price, size, category FROM products WHERE name IN (${placeholders})`, names)
+    const placeholders = names.map((_, index) => `$${index + 1}`).join(', ')
+    const { rows: productsInOrder } = await connection.query(`SELECT id, name, price, size, category FROM products WHERE name IN (${placeholders})`, names)
     if (productsInOrder.length !== items.length) return response.status(400).json({ message: 'One or more cart items are invalid.' })
     const orderItems = items.map((item) => {
       const product = productsInOrder.find((entry) => entry.name === item.name)
@@ -77,9 +77,9 @@ app.post('/api/orders', async (request, response) => {
     })
     const total = orderItems.reduce((sum, item) => sum + item.lineTotal, 0)
     const orderId = `BA-${Date.now()}`
-    await connection.query('INSERT INTO orders (id, customer_email, customer_phone, address_name, address_line, address_city, address_state, address_pin, payment_method, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [orderId, customer.email, customer.phone, address.name, address.line, address.city, address.state, address.pin, paymentMethod || 'cod', total])
-    for (const item of orderItems) await connection.query('INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total) VALUES (?, ?, ?, ?, ?, ?)', [orderId, item.id, item.name, item.quantity, item.price, item.lineTotal])
-    await connection.commit()
+    await connection.query('INSERT INTO orders (id, customer_email, customer_phone, address_name, address_line, address_city, address_state, address_pin, payment_method, total) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)', [orderId, customer.email, customer.phone, address.name, address.line, address.city, address.state, address.pin, paymentMethod || 'cod', total])
+    for (const item of orderItems) await connection.query('INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total) VALUES ($1, $2, $3, $4, $5, $6)', [orderId, item.id, item.name, item.quantity, item.price, item.lineTotal])
+    await connection.query('COMMIT')
     let emailSent = false
     try {
       emailSent = await sendOrderEmail({ id: orderId, customer, address, paymentMethod: paymentMethod || 'cod', items: orderItems, total })
@@ -88,7 +88,7 @@ app.post('/api/orders', async (request, response) => {
     }
     return response.status(201).json({ orderId, total, status: 'received', emailSent })
   } catch (error) {
-    await connection.rollback()
+    await connection.query('ROLLBACK')
     return response.status(500).json({ message: 'Unable to create order.', detail: error.message })
   } finally {
     connection.release()
@@ -97,17 +97,17 @@ app.post('/api/orders', async (request, response) => {
 
 // Lists all saved orders together with the ordered items for an admin or internal dashboard view.
 app.get('/api/orders', async (_request, response) => {
-  const [orders] = await pool.query('SELECT id, customer_email, customer_phone, address_name, address_line, address_city, address_state, address_pin, payment_method, total, status, created_at FROM orders ORDER BY created_at DESC')
-  const [items] = await pool.query('SELECT order_id, product_name AS name, quantity, unit_price AS price, line_total AS lineTotal FROM order_items')
-  return response.json(orders.map((order) => ({ ...order, items: items.filter((item) => item.order_id === order.id) })))
+  const { rows: orders } = await pool.query('SELECT id, customer_email, customer_phone, address_name, address_line, address_city, address_state, address_pin, payment_method, total, status, created_at FROM orders ORDER BY created_at DESC')
+  const { rows: items } = await pool.query('SELECT order_id, product_name AS name, quantity, unit_price AS price, line_total AS lineTotal FROM order_items')
+  return response.json(orders.map((order) => ({ ...order, total: Number(order.total), items: items.filter((item) => item.order_id === order.id).map((item) => ({ ...item, price: Number(item.price), lineTotal: Number(item.lineTotal) })) })))
 })
 
 // Fetches a single order and its line items using the generated order ID.
 app.get('/api/orders/:orderId', async (request, response) => {
-  const [orders] = await pool.query('SELECT id, customer_email, customer_phone, address_name, address_line, address_city, address_state, address_pin, payment_method, total, status, created_at FROM orders WHERE id = ?', [request.params.orderId])
+  const { rows: orders } = await pool.query('SELECT id, customer_email, customer_phone, address_name, address_line, address_city, address_state, address_pin, payment_method, total, status, created_at FROM orders WHERE id = $1', [request.params.orderId])
   if (!orders.length) return response.status(404).json({ message: 'Order not found.' })
-  const [items] = await pool.query('SELECT product_name AS name, quantity, unit_price AS price, line_total AS lineTotal FROM order_items WHERE order_id = ?', [request.params.orderId])
-  return response.json({ ...orders[0], items })
+  const { rows: items } = await pool.query('SELECT product_name AS name, quantity, unit_price AS price, line_total AS lineTotal FROM order_items WHERE order_id = $1', [request.params.orderId])
+  return response.json({ ...orders[0], total: Number(orders[0].total), items: items.map((item) => ({ ...item, price: Number(item.price), lineTotal: Number(item.lineTotal) })) })
 })
 
 // Attempt to initialize database with retry logic
@@ -131,14 +131,14 @@ async function startServer() {
   }
 
   if (!dbConnected) {
-    console.warn('⚠ Could not connect to MySQL database. Server will start, but database operations may fail.')
-    console.warn('⚠ Make sure MySQL is running and accessible at the configured host and port.')
+    console.warn('⚠ Could not connect to PostgreSQL database. Server will start, but database operations may fail.')
+    console.warn('⚠ Make sure DATABASE_URL is configured and the database is accessible.')
   }
 
   app.listen(port, () => {
     console.log(`✓ BareAya API running at http://localhost:${port}`)
     if (!dbConnected) {
-      console.warn('⚠ Database is not connected. Please verify MySQL is running.')
+      console.warn('⚠ Database is not connected. Please verify DATABASE_URL is configured.')
     }
   })
 }

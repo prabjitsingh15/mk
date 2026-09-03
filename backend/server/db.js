@@ -1,17 +1,14 @@
 import 'dotenv/config'
-import mysql from 'mysql2/promise'
+import pg from 'pg'
 
-// Shared MySQL connection pool for the BareAya backend.
+const { Pool } = pg
+
+// Shared PostgreSQL connection pool for the BareAya backend.
 // The app uses this pool to read products, save orders, and create
 // the required tables when the server starts.
-export const pool = mysql.createPool({
-  host: globalThis.process?.env.DB_HOST || 'localhost',
-  port: Number(globalThis.process?.env.DB_PORT || 3306),
-  user: globalThis.process?.env.DB_USER || 'root',
-  password: globalThis.process?.env.DB_PASSWORD || '',
-  database: globalThis.process?.env.DB_NAME || 'bareaya',
-  waitForConnections: true,
-  connectionLimit: 10,
+export const pool = new Pool({
+  connectionString: globalThis.process?.env.DATABASE_URL,
+  ssl: globalThis.process?.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
 })
 
 /**
@@ -22,13 +19,13 @@ export const pool = mysql.createPool({
  * without creating duplicate rows when the server is restarted.
  */
 export async function initializeDatabase(products) {
-  const connection = await pool.getConnection()
+  const connection = await pool.connect()
   try {
     await connection.query(`
       CREATE TABLE IF NOT EXISTS products (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         name VARCHAR(160) NOT NULL UNIQUE,
-        price DECIMAL(10, 2) NOT NULL,
+        price NUMERIC(10, 2) NOT NULL,
         size VARCHAR(40) NOT NULL,
         category VARCHAR(40) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -52,20 +49,20 @@ export async function initializeDatabase(products) {
     `)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS order_items (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         order_id VARCHAR(32) NOT NULL,
         product_id INT NOT NULL,
         product_name VARCHAR(160) NOT NULL,
         quantity INT NOT NULL,
-        unit_price DECIMAL(10, 2) NOT NULL,
-        line_total DECIMAL(10, 2) NOT NULL,
+        unit_price NUMERIC(10, 2) NOT NULL,
+        line_total NUMERIC(10, 2) NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
       )
     `)
     for (const product of products) {
       await connection.query(
-        'INSERT INTO products (name, price, size, category) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE price = VALUES(price), size = VALUES(size), category = VALUES(category)',
+        'INSERT INTO products (name, price, size, category) VALUES ($1, $2, $3, $4) ON CONFLICT (name) DO UPDATE SET price = EXCLUDED.price, size = EXCLUDED.size, category = EXCLUDED.category',
         [product.name, product.price, product.size, product.category],
       )
     }
